@@ -1,6 +1,7 @@
 #include "renam.h"
 #include "trace.h"
 #include "resource.h"
+#include <shlobj.h>
 #include <tchar.h>
 #include <commctrl.h>
 #pragma comment(lib, "Comctl32.lib")
@@ -8,6 +9,36 @@
 TCHAR szTitle[100] = _T("My Program");
 static int sb_size[] = { 100, 200, -1 };
 globaldata g;
+
+int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+{
+	if (uMsg == BFFM_INITIALIZED){
+		SendMessage(hwnd, BFFM_SETSELECTION, (WPARAM)TRUE, lpData);	//初期フォルダ設定
+	}
+	return 0;
+}
+
+void GetFolder(HWND hdlg)
+{
+	char dst_file[MAX_PATH];
+	BROWSEINFO  binfo;
+	LPITEMIDLIST idlist;
+
+	GetDlgItemText(hdlg, IDC_DESFILE, dst_file, MAX_PATH);	//初期フォルダ読込み
+	binfo.hwndOwner = hdlg;
+	binfo.pidlRoot = NULL;
+	binfo.pszDisplayName = dst_file;
+	binfo.lpszTitle = "フォルダを指定してください";
+	binfo.ulFlags = BIF_RETURNONLYFSDIRS;
+	binfo.lpfn = &BrowseCallbackProc;		//コールバック関数
+	binfo.lParam = (LPARAM)dst_file;		//コールバックに渡す引数
+	binfo.iImage = (int)NULL;
+	idlist = SHBrowseForFolder(&binfo);
+	SHGetPathFromIDList(idlist, dst_file);		//ITEMIDLISTからパスを得る
+	CoTaskMemFree(idlist);				//ITEMIDLISTの解放
+	SetDlgItemText(hdlg, IDC_DESFILE, dst_file);	//フォルダ名出力
+}
+
 
 void set_font(HWND hWnd, long ID, long nHeight) {
 	HWND hStatic = GetDlgItem(hWnd, ID);
@@ -151,6 +182,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 		switch (LOWORD(wp)) {
 		case IDM_VERSION:
 			DialogBox(g.hInst, MAKEINTRESOURCE(IDD_VERSION), hWnd, (DLGPROC)VersionProc);
+			break;
+
+		case IDM_CHECK:
+			GetFolder(g.hDlg0);
 			break;
 
 		case IDM_EXIT:

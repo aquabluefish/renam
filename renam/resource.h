@@ -6,7 +6,9 @@
 #define IDR_MENU1                               101
 #define IDD_VERSION                             103
 #define IDI_ICON1                               104
+#define IDC_DESFILE                             40000
 #define IDC_VERSION                             40000
 #define IDM_EXIT                                40000
 #define IDC_PROCNAME                            40001
 #define IDM_VERSION                             40001
+#define IDM_CHECK                               40002
