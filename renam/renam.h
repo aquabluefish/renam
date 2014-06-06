@@ -13,5 +13,7 @@ typedef struct  {
 	HBITMAP		hBitmap;					// オフスクリーンビットマップ
 	HDC			hBuffer;					// ダブルバッファ
 	long		count;
+	char		path[MAX_PATH];
+	char		inifile[MAX_PATH];
 } globaldata;
 

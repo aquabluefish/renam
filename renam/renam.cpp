@@ -3,12 +3,26 @@
 #include "resource.h"
 #include <shlobj.h>
 #include <tchar.h>
+#include <string.h>
 #include <commctrl.h>
 #pragma comment(lib, "Comctl32.lib")
 
 TCHAR szTitle[100] = _T("My Program");
 static int sb_size[] = { 100, 200, -1 };
 globaldata g;
+
+void init_para(void) {
+	char dir[256];
+	GetCurrentDirectory(255, dir);                // カレントディレクトリのパスを取得
+	sprintf_s(g.inifile, "%s\\%s", dir, "renam.ini");    // INIファイルパスを作成
+	GetPrivateProfileString("PARAM", "PATH", "", g.path, 255, g.inifile);    // INIファイル読込み
+	SetDlgItemText(g.hDlg0, IDC_DESFILE, g.path);	//フォルダ名出力
+}
+
+void save_para(void) {
+	GetDlgItemText(g.hDlg0, IDC_DESFILE, g.path, MAX_PATH);	//初期フォルダ読込み
+	WritePrivateProfileString("PARAM", "PATH", g.path, g.inifile);	// INIファイル書き込み
+}
 
 int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
 {
@@ -158,6 +172,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 		);
 		SendMessage(g.hSbar, SB_SETPARTS, 3, (LPARAM)sb_size);
 		SendMessage(g.hSbar, SB_SETTEXT, 0 | 1, (LPARAM)"test");
+		init_para();
 		break;
 
 	case WM_SIZE:
@@ -198,6 +213,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 		break;
 
 	case WM_DESTROY:
+		save_para();
 		PostQuitMessage(0);
 		break;
 
