@@ -12,8 +12,17 @@ typedef struct  {
 	HWND		hSbar;						// ステータスバー
 	HBITMAP		hBitmap;					// オフスクリーンビットマップ
 	HDC			hBuffer;					// ダブルバッファ
+	HWND		hList;						// リストビュー
+
 	long		count;
 	char		path[MAX_PATH];
+	char		dir[MAX_PATH];
 	char		inifile[MAX_PATH];
 } globaldata;
+
+typedef struct {
+	char	fname[256];
+	long	fsize;
+	char	fdate[32];
+} listdata;
 

@@ -9,7 +9,52 @@
 
 TCHAR szTitle[100] = _T("My Program");
 static int sb_size[] = { 100, 200, -1 };
+DWORD dwStyleEx = 0;
+NM_LISTVIEW *pNMLV;
+listdata d[256];
+
 globaldata g;
+
+int filelist(char *path)
+{
+	WIN32_FIND_DATA	fd;
+	HANDLE		hFind;
+	FILETIME	ft;
+	SYSTEMTIME	st;
+	int i=0;
+
+	hFind = FindFirstFile(path, &fd);
+	while (hFind != INVALID_HANDLE_VALUE) {
+		if (strcmp(fd.cFileName, ".") && strcmp(fd.cFileName, "..")) {
+			strcpy_s(d[i].fname, fd.cFileName);						// ファイル名
+			if (!(fd.dwFileAttributes&(FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_SYSTEM)))
+				d[i].fsize = (fd.nFileSizeHigh << 6) + ((fd.nFileSizeLow + 1023) >> 10);	// ファイルサイズ
+			//d[i].fsize = fd.nFileSizeHigh*MAXDWORD + fd.nFileSizeLow;
+			FileTimeToLocalFileTime(&(fd.ftLastWriteTime), &ft);
+			FileTimeToSystemTime(&ft, &st);
+			wsprintf(d[i].fdate, "%04d/%02d/%02d %02d:%02d",
+				st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);		// ファイル日付
+			i++;
+		}
+		if (!FindNextFile(hFind, &fd)) break;
+	}
+	FindClose(hFind);
+	ListView_SetItemCountEx(g.hList, i, LVSICF_NOINVALIDATEALL);
+	return i;
+}
+
+void InsColumn(HWND hWnd, char *str, int cx, int iSub)
+{
+	LV_COLUMN col;
+
+	col.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	col.fmt = LVCFMT_LEFT;
+	col.cx = cx;
+	col.pszText = str;
+	col.iSubItem = iSub;
+	ListView_InsertColumn(hWnd, iSub, &col);
+	return;
+}
 
 void init_para(void) {
 	char dir[256];
@@ -17,6 +62,8 @@ void init_para(void) {
 	sprintf_s(g.inifile, "%s\\%s", dir, "renam.ini");    // INIファイルパスを作成
 	GetPrivateProfileString("PARAM", "PATH", "", g.path, 255, g.inifile);    // INIファイル読込み
 	SetDlgItemText(g.hDlg0, IDC_DESFILE, g.path);	//フォルダ名出力
+	strcpy_s(g.dir, g.path);
+	strcat_s(g.dir, "\\*.*");
 }
 
 void save_para(void) {
@@ -51,28 +98,29 @@ void GetFolder(HWND hdlg)
 	SHGetPathFromIDList(idlist, dst_file);		//ITEMIDLISTからパスを得る
 	CoTaskMemFree(idlist);				//ITEMIDLISTの解放
 	SetDlgItemText(hdlg, IDC_DESFILE, dst_file);	//フォルダ名出力
+	strcpy_s(g.dir, dst_file);
+	strcat_s(g.dir, "\\*.*");
 }
 
 
-void set_font(HWND hWnd, long ID, long nHeight) {
-	HWND hStatic = GetDlgItem(hWnd, ID);
-
-	HFONT hFont = CreateFont(nHeight,/* nHeight */
-		0,/* nWidth */
-		0,/* nEscapement */
-		0,/* nOrientatioon */
-		FW_DEMIBOLD,/* fnWeight */
-		(DWORD)FALSE,/* fdwItalic */
-		(DWORD)FALSE,/* fdwUnderline */
-		(DWORD)FALSE,/* fdwStrikeOut */
-		(DWORD)ANSI_CHARSET,/* fdwCharSet */
-		(DWORD)OUT_DEFAULT_PRECIS,/* fdwOutputPrecision */
-		(DWORD)CLIP_DEFAULT_PRECIS,/* fdwClipPrecision */
-		(DWORD)PROOF_QUALITY,/* fdwQuality */
-		(DWORD)DEFAULT_PITCH,/* fdwPitchAndFamily */
-		_T("ＭＳ ゴシック"));/* lpszFace */
-
-	SendMessage(hStatic, WM_SETFONT, (WPARAM)hFont, TRUE);
+HFONT SetMyFont(LPCTSTR face, int h, int angle)
+{
+	HFONT hFont;
+	hFont = CreateFont(h,       //フォント高さ
+		0,                      //文字幅
+		angle,                  //テキストの角度
+		0,                      //ベースラインとｘ軸との角度
+		FW_REGULAR,             //フォントの重さ（太さ）
+		FALSE,                  //イタリック体
+		FALSE,                  //アンダーライン
+		FALSE,                  //打ち消し線
+		SHIFTJIS_CHARSET,       //文字セット
+		OUT_DEFAULT_PRECIS,     //出力精度
+		CLIP_DEFAULT_PRECIS,    //クリッピング精度
+		PROOF_QUALITY,          //出力品質
+		FIXED_PITCH | FF_MODERN,        //ピッチとファミリー
+		face);                  //書体名
+	return hFont;
 }
 
 void set_windowsize(void) {
@@ -106,13 +154,94 @@ void set_windowsize(void) {
 
 BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 {
+	long col, row;
 	RECT rt;
+	static char szTmp[255] = { "C:\\*.*" };
 	switch (msg) {
 
 	case WM_INITDIALOG:                     // Window の初期化
 		GetClientRect(hWnd, &rt);			// Dialogリソースのサイズ取得
 		g.dlg0x = rt.right - rt.left;
 		g.dlg0y = rt.bottom - rt.top;
+
+		// リストハンドルの取得
+		g.hList = GetDlgItem(hWnd, IDC_FLIST);
+
+		// １行選択と罫線の表示
+		dwStyleEx = ListView_GetExtendedListViewStyle(g.hList);
+		dwStyleEx |= (LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT | LVS_EX_ONECLICKACTIVATE);
+		//      dwStyleEx |= ( LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT );
+		ListView_SetExtendedListViewStyle(g.hList, dwStyleEx);
+
+		// 項目名の設定
+		InsColumn(g.hList, "No.", 30, 0);
+		InsColumn(g.hList, "Filename",300, 1);
+		InsColumn(g.hList, "Size[KB]", 60, 2);
+		InsColumn(g.hList, "Date", 120, 3);
+
+		// 行数の設定
+		ListView_SetItemCountEx(g.hList, 0, LVSICF_NOINVALIDATEALL);
+
+		// とりあえず、１行目を選択状態にしておく
+		ListView_SetItemState(g.hList, 0, LVIS_FOCUSED | LVIS_SELECTED, LVIS_FOCUSED | LVIS_SELECTED);
+
+		return TRUE;
+
+	case WM_NOTIFY:
+		LPNMHDR lpnmhdr;
+		lpnmhdr = (LPNMHDR)lp;
+
+		switch (((LPNMHDR)lp)->idFrom) {
+		case IDC_FLIST:
+
+			switch (lpnmhdr->code) {
+			case LVN_GETDISPINFO:  // 仮想ListViewの表示データ問合せ
+
+				LV_DISPINFO *pLvDispInfo;
+				pLvDispInfo = (LV_DISPINFO*)lp;
+				TCHAR szString[MAX_PATH];
+
+				if (pLvDispInfo->item.mask & LVIF_TEXT) {
+					col = pLvDispInfo->item.iSubItem;       // 列番号
+					row = pLvDispInfo->item.iItem;          // 行番号
+
+					switch (col) {
+					case 0:
+						wsprintf(szString, "%d", row+1);    // 行番号
+						break;
+					case 1:
+						wsprintf(szString, "%s", d[row].fname);    // 名前をセット
+						break;
+					case 2:
+						wsprintf(szString, "%d", d[row].fsize);    // 内容をセット
+						break;
+					case 3:
+						wsprintf(szString, "%s", d[row].fdate);    // 設定値をセット
+						break;
+					}
+					if (lstrlen(szString) < pLvDispInfo->item.cchTextMax)
+						lstrcpy(pLvDispInfo->item.pszText, szString);    // 表示文字列を返す
+					else
+						lstrcpy(pLvDispInfo->item.pszText, _T("****"));  // 文字列が大きすぎる場合
+				}
+				break;
+				//              case LVN_ITEMCHANGED:
+			case LVN_ITEMACTIVATE:
+				row = ListView_GetNextItem(g.hList, -1, LVIS_SELECTED);   // 選択行を求める
+				if (row != -1)
+					printf(">%d\n", row);
+				break;
+
+			case LVN_COLUMNCLICK:   // カラムヘッダ部のクリック
+				pNMLV = (NM_LISTVIEW *)lp;
+				printf(">col %d click\n", pNMLV->iSubItem);
+				break;
+
+			default:
+				break;
+			}
+		}
+
 		return TRUE;
 
 	case WM_CLOSE:                          // Window を閉じる
@@ -130,6 +259,12 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 		case IDCANCEL:
 			return TRUE;
 
+		case IDC_GETFOLDER:
+			GetFolder(g.hDlg0);
+			filelist(g.dir);
+			InvalidateRect(g.hDlg0, NULL, TRUE);
+			return TRUE;
+
 		default:
 			return (DefWindowProc(hWnd, msg, wp, lp));      //処理しないものはシステムに渡す
 		}
@@ -140,11 +275,15 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 // Aboutダイアログ表示
 LRESULT CALLBACK VersionProc(HWND hdlg, UINT msg, WPARAM wp, LPARAM lp)
 {
+	HFONT hFont;
+
 	switch (msg) {
 	case WM_INITDIALOG:
 		g.hVersion = hdlg;
-		set_font(hdlg, IDC_PROCNAME,18);
-		set_font(hdlg, IDC_VERSION,12);
+		hFont = SetMyFont("ＭＳ ゴシック", 18, 0);
+		SendMessage(GetDlgItem(hdlg, IDC_PROCNAME), WM_SETFONT, (WPARAM)hFont, (LPARAM)FALSE);
+		hFont = SetMyFont("ＭＳ ゴシック", 12, 0);
+		SendMessage(GetDlgItem(hdlg, IDC_VERSION), WM_SETFONT, (WPARAM)hFont, (LPARAM)FALSE);
 		return FALSE;
 	case WM_LBUTTONDOWN:
 		EndDialog(hdlg, IDOK);
@@ -173,6 +312,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 		SendMessage(g.hSbar, SB_SETPARTS, 3, (LPARAM)sb_size);
 		SendMessage(g.hSbar, SB_SETTEXT, 0 | 1, (LPARAM)"test");
 		init_para();
+		filelist(g.dir);
+		InvalidateRect(g.hDlg0, NULL, TRUE);
 		break;
 
 	case WM_SIZE:
@@ -201,6 +342,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 
 		case IDM_CHECK:
 			GetFolder(g.hDlg0);
+			filelist(g.dir);
 			break;
 
 		case IDM_EXIT:
