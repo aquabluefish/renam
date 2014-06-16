@@ -13,10 +13,14 @@
 #define IDC_PROCNAME                            40001
 #define IDM_VERSION                             40001
 #define IDC_UP                                  40002
-#define IDM_CHECK                               40002
+#define IDM_UP                                  40002
 #define IDC_GETFOLDER                           40003
+#define IDM_DOWN                                40003
 #define IDC_DOWN                                40004
-#define IDC_ALLSELECT                           40005
-#define IDC_ALLUNSELECT                         40006
+#define IDM_SELECTALL                           40004
+#define IDC_UNSELECTALL                         40005
+#define IDM_UNSELECTALL                         40005
+#define IDM_GETFOLDER                           40006
 #define IDC_OK                                  40007
 #define IDC_CANCEL                              40008
+#define IDC_SELECTALL                           40009

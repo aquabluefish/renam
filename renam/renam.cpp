@@ -22,9 +22,54 @@ void CheckMyCheck(HWND hList)
 
 	nCount = ListView_GetItemCount(hList);
 	for (i = 0; i < nCount; i++) {
-		if (ListView_GetItemState(hList, i,LVIS_SELECTED)) {
+		if (ListView_GetItemState(hList, i, LVIS_SELECTED)) {
 			wsprintf(str, "%dにチェック", i);
 			MessageBox(hList, str, "CHECKED", MB_OK);
+		}
+	}
+	return;
+}
+
+
+void listup(HWND hList)
+{
+	int nCount, i;
+	int mark = 1;
+
+	nCount = ListView_GetItemCount(hList);
+	for (i = 0; i < nCount; i++) {
+		if (ListView_GetItemState(hList, i, LVIS_SELECTED)) {
+			if (!mark) {
+				// d[i]⇔d[i-1]
+				x$swap(d[i], d[i - 1]);
+				ListView_SetItemState(g.hList, i - 1, LVIS_SELECTED, LVIS_SELECTED)
+				ListView_SetItemState(g.hList, i, 0, LVIS_SELECTED)
+			}
+		}
+		else {
+			mark = 0;
+		}
+	}
+	return;
+}
+
+void listdown(HWND hList)
+{
+	int nCount, i;
+	int mark=1;
+
+	nCount = ListView_GetItemCount(hList);
+	for (i = nCount-1; i>=0 ;i--) {
+		if (ListView_GetItemState(hList, i, LVIS_SELECTED)) {
+			if (!mark) {
+				// d[i]⇔d[i+1]
+				x$swap(d[i], d[i + 1]);
+				ListView_SetItemState(g.hList, i + 1, LVIS_SELECTED, LVIS_SELECTED)
+				ListView_SetItemState(g.hList, i, 0, LVIS_SELECTED)
+			}
+		}
+		else {
+			mark = 0;
 		}
 	}
 	return;
@@ -306,11 +351,21 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 			InvalidateRect(g.hList, NULL, TRUE);
 			return TRUE;
 
-		case IDC_ALLSELECT:
+		case IDC_UP:
+			listup(g.hList);
+			InvalidateRect(g.hList, NULL, TRUE);
+			return TRUE;
+
+		case IDC_DOWN:
+			listdown(g.hList);
+			InvalidateRect(g.hList, NULL, TRUE);
+			return TRUE;
+
+		case IDC_SELECTALL:
 			ListView_SetItemState(g.hList, -1, LVIS_SELECTED, LVIS_SELECTED)
 				return TRUE;
 
-		case IDC_ALLUNSELECT:
+		case IDC_UNSELECTALL:
 			ListView_SetItemState(g.hList, -1, 0, LVIS_SELECTED)
 				return TRUE;
 
@@ -389,10 +444,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 			DialogBox(g.hInst, MAKEINTRESOURCE(IDD_VERSION), hWnd, (DLGPROC)VersionProc);
 			break;
 
-		case IDM_CHECK:
-//			GetFolder(g.hDlg0);
-//			filelist(g.dir);
-			CheckMyCheck(g.hList);
+		case IDM_GETFOLDER:
+			GetFolder(g.hDlg0);
+			filelist(g.dir);
+			InvalidateRect(g.hList, NULL, TRUE);
+			break;
+
+		case IDM_UP:
+			listup(g.hList);
+			InvalidateRect(g.hList, NULL, TRUE);
+			break;
+
+		case IDM_DOWN:
+			listdown(g.hList);
+			InvalidateRect(g.hList, NULL, TRUE);
+			break;
+
+		case IDM_SELECTALL:
+			ListView_SetItemState(g.hList, -1, LVIS_SELECTED, LVIS_SELECTED)
+			break;
+
+		case IDM_UNSELECTALL:
+			ListView_SetItemState(g.hList, -1, 0, LVIS_SELECTED)
 			break;
 
 		case IDM_EXIT:

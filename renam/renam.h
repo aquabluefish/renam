@@ -26,3 +26,9 @@ typedef struct {
 	char	fdate[32];
 } listdata;
 
+#define x$swap(a,b) do {					\
+struct temp_t { char t[sizeof(a)]; } temp;	\
+	temp = *(struct temp_t*)&(a);			\
+	*(struct temp_t*)&(a) = *(struct temp_t*)&(b);	\
+	*(struct temp_t*)&(b) = temp; } while (0)
+
