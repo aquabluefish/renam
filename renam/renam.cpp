@@ -15,6 +15,22 @@ listdata d[256];
 
 globaldata g;
 
+void CheckMyCheck(HWND hList)
+{
+	int nCount, i;
+	char str[256];
+
+	nCount = ListView_GetItemCount(hList);
+	for (i = 0; i < nCount; i++) {
+		if (ListView_GetItemState(hList, i,LVIS_SELECTED)) {
+			wsprintf(str, "%dにチェック", i);
+			MessageBox(hList, str, "CHECKED", MB_OK);
+		}
+	}
+	return;
+}
+
+// ファイルリストの作成
 int filelist(char *path)
 {
 	WIN32_FIND_DATA	fd;
@@ -152,11 +168,14 @@ void set_windowsize(void) {
 	}
 }
 
+
 BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 {
 	long col, row;
 	RECT rt;
 	static char szTmp[255] = { "C:\\*.*" };
+	LPNMLVCUSTOMDRAW lplvcd;
+
 	switch (msg) {
 
 	case WM_INITDIALOG:                     // Window の初期化
@@ -225,7 +244,9 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 						lstrcpy(pLvDispInfo->item.pszText, _T("****"));  // 文字列が大きすぎる場合
 				}
 				break;
-				//              case LVN_ITEMCHANGED:
+
+//			case LVN_ITEMCHANGED:
+
 			case LVN_ITEMACTIVATE:
 				row = ListView_GetNextItem(g.hList, -1, LVIS_SELECTED);   // 選択行を求める
 				if (row != -1)
@@ -237,11 +258,31 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 				printf(">col %d click\n", pNMLV->iSubItem);
 				break;
 
+				
+			case NM_CUSTOMDRAW:
+				// ---- カスタムドローで、Listviewの色を設定。
+				lplvcd = (LPNMLVCUSTOMDRAW)lp;
+				switch (lplvcd->nmcd.dwDrawStage) {
+
+				case CDDS_PREPAINT:     // 描画前にITEM情報をリクエスト
+					SetWindowLong(hWnd, DWL_MSGRESULT, (long)CDRF_NOTIFYITEMDRAW);
+					break;
+				case CDDS_ITEMPREPAINT:
+					row = lplvcd->nmcd.dwItemSpec;  // 行番号
+					if (ListView_GetItemState(g.hList, row, LVIS_SELECTED)) {
+						lplvcd->clrTextBk = RGB(0, 255, 255);
+						lplvcd->clrText = RGB(0, 0, 0);
+					}
+					SetWindowLong(hWnd, DWL_MSGRESULT, (long)(CDRF_NEWFONT));
+					break;
+				}
+				break;
+
 			default:
+//				SetWindowLong(hWnd, DWL_MSGRESULT, (long)CDRF_DODEFAULT);
 				break;
 			}
 		}
-
 		return TRUE;
 
 	case WM_CLOSE:                          // Window を閉じる
@@ -262,8 +303,16 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 		case IDC_GETFOLDER:
 			GetFolder(g.hDlg0);
 			filelist(g.dir);
-			InvalidateRect(g.hDlg0, NULL, TRUE);
+			InvalidateRect(g.hList, NULL, TRUE);
 			return TRUE;
+
+		case IDC_ALLSELECT:
+			ListView_SetItemState(g.hList, -1, LVIS_SELECTED, LVIS_SELECTED)
+				return TRUE;
+
+		case IDC_ALLUNSELECT:
+			ListView_SetItemState(g.hList, -1, 0, LVIS_SELECTED)
+				return TRUE;
 
 		default:
 			return (DefWindowProc(hWnd, msg, wp, lp));      //処理しないものはシステムに渡す
@@ -313,7 +362,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 		SendMessage(g.hSbar, SB_SETTEXT, 0 | 1, (LPARAM)"test");
 		init_para();
 		filelist(g.dir);
-		InvalidateRect(g.hDlg0, NULL, TRUE);
+		InvalidateRect(g.hList, NULL, TRUE);
 		break;
 
 	case WM_SIZE:
@@ -341,8 +390,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 			break;
 
 		case IDM_CHECK:
-			GetFolder(g.hDlg0);
-			filelist(g.dir);
+//			GetFolder(g.hDlg0);
+//			filelist(g.dir);
+			CheckMyCheck(g.hList);
 			break;
 
 		case IDM_EXIT:
