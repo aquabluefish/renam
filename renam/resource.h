@@ -10,9 +10,9 @@
 #define IDC_DESFILE                             40000
 #define IDC_LINKURL                             40000
 #define IDC_VERSION                             40001
+#define IDC_PROGNAME                            40002
 #define IDM_EXIT                                40002
 #define IDC_FLIST                               40003
-#define IDC_PROCNAME                            40004
 #define IDM_VERSION                             40005
 #define IDC_UP                                  40006
 #define IDM_UP                                  40007

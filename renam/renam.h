@@ -2,7 +2,7 @@
 
 typedef struct  {
 	HWND		hMain;						// メインウィンドウのハンドル
-	HWND		hVersion;
+	HWND		hAbout;
 	HINSTANCE	hInst;						// メインウィンドウのインスタンス
 	HWND		hDlg0, hDlg1, hDlg2, hDlg3;	// 子ダイアログのハンドル
 	long		mainx, mainy;
@@ -16,6 +16,8 @@ typedef struct  {
 
 	HCURSOR		hCur;
 	HFONT		hLinkfont;
+	char		linkurl[256];
+
 
 	long		count;
 	char		path[MAX_PATH];

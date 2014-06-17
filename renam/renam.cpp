@@ -7,7 +7,9 @@
 #include <commctrl.h>
 #pragma comment(lib, "Comctl32.lib")
 
-TCHAR szTitle[100] = _T("My Program");
+char ProgName[100] = "Renum";
+char Version[100] = "V.140617";
+
 static int sb_size[] = { 100, 200, -1 };
 DWORD dwStyleEx = 0;
 NM_LISTVIEW *pNMLV;
@@ -381,60 +383,59 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 
 LRESULT CALLBACK linkProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 {
-	switch (msg){
+	HDC hdc;
+	PAINTSTRUCT ps;
+	COLORREF cr;
+	LOGFONT lf;
+	HFONT hFont;
+	HCURSOR hCursor;
 
-	case WM_SETCURSOR:		//マウスポインタの変更
-		SetCursor(g.hCur);
+	switch (msg) {
+	case WM_SETCURSOR:		// マウスポインタの変更
+		hCursor = LoadCursor(g.hInst, MAKEINTRESOURCE(IDI_CURSOR1));
+		SetCursor(hCursor);
 		return 0;
-
-	case WM_PAINT:			// リンク文字列を青く書き直す
-		PAINTSTRUCT ps;
-		HDC         hdc;
-		char        line[256];
-
-		GetWindowText(hWnd, line, 255);
+	case WM_LBUTTONDOWN:	// ブラウザでURLを開く
+		ShellExecute(hWnd, "open", g.linkurl, NULL, NULL, SW_SHOWDEFAULT);
+		return 0;
+	case WM_PAINT:			// リンク文字列にアンダーバーを付けて青く書き直す
 		hdc = BeginPaint(hWnd, &ps);
-		SelectObject(hdc, g.hLinkfont);
-		SetTextColor(hdc, RGB(0, 0, 255));	// 文字を青くする
-		SetBkColor(hdc, GetSysColor(COLOR_BTNFACE));
-		SetBkMode(hdc, OPAQUE);
-		TextOut(hdc, 0, 0, line, lstrlen(line));
+		memset(&lf, 0, sizeof(LOGFONT));
+//		strcpy_s(lf.lfFaceName, "system");
+		lf.lfUnderline = TRUE;
+		hFont = CreateFontIndirect(&lf);
+		SelectObject(hdc, (HGDIOBJ)hFont);
+		cr = GetSysColor(COLOR_MENU);
+		SetBkColor(hdc, cr);
+		SetTextColor(hdc, RGB(0, 0, 255));
+		SetBkMode(hdc, TRANSPARENT);
+		TextOut(hdc, 0, 0, g.linkurl, strlen(g.linkurl));
+		DeleteObject(hFont);
 		EndPaint(hWnd, &ps);
 		return 0;
 	}
-	return CallWindowProc(oldlinkProc, hWnd, msg, wp, lp);
+	return (CallWindowProc(oldlinkProc, hWnd, msg, wp, lp));
 }
 
 // Aboutダイアログ表示
 LRESULT CALLBACK VersionProc(HWND hdlg, UINT msg, WPARAM wp, LPARAM lp)
 {
-	HFONT hFont;
-
 	switch (msg) {
 	case WM_INITDIALOG:
-		g.hVersion = hdlg;
-		setFontSetting(hdlg, IDC_PROCNAME, 18, 0);
+		g.hAbout = hdlg;
+		SetDlgItemText(hdlg, IDC_PROGNAME, ProgName);
+		SetDlgItemText(hdlg, IDC_VERSION, Version);
+		setFontSetting(hdlg, IDC_PROGNAME, 18, 0);
 		setFontSetting(hdlg, IDC_VERSION, 12, 0);
-		g.hCur = LoadCursor(g.hInst, MAKEINTRESOURCE(IDI_CURSOR1));
-		g.hLinkfont = setFontSetting(hdlg, IDC_LINKURL, 10, 1);
 		//URLリンク文字列のサブクラス化
 		oldlinkProc = (WNDPROC)GetWindowLong(GetDlgItem(hdlg, IDC_LINKURL), GWL_WNDPROC);
 		SetWindowLong(GetDlgItem(hdlg, IDC_LINKURL), GWL_WNDPROC, (LONG)linkProc);
+		GetDlgItemText(hdlg, IDC_LINKURL, g.linkurl, 255);	//URL文字列
 		return FALSE;
 	case WM_LBUTTONDOWN:
 		EndDialog(hdlg, IDOK);
 		break;
-	case WM_COMMAND:
-		switch (LOWORD(wp)) {
-		case IDC_LINKURL:
-			if (HIWORD(wp) == STN_CLICKED) {
-				char line[256];
-				GetDlgItemText(hdlg, LOWORD(wp), line, 255);
-				ShellExecute(hdlg, "open", line, NULL, NULL, SW_SHOWDEFAULT);
-			}
-			break;
-		}
-		break;
+
 	default:
 		return FALSE;
 	}
@@ -547,11 +548,11 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCm
 	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_MENU1);                // MENU
-	wcex.lpszClassName = szTitle;
+	wcex.lpszClassName = ProgName;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(NULL));      // small ICON
 	if (!RegisterClassEx(&wcex)) return 0;
 
-	hWnd = CreateWindow(szTitle, szTitle, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+	hWnd = CreateWindow(ProgName, ProgName, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
 	if (!hWnd) {
 		return 0;
