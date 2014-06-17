@@ -12,24 +12,8 @@ static int sb_size[] = { 100, 200, -1 };
 DWORD dwStyleEx = 0;
 NM_LISTVIEW *pNMLV;
 listdata d[256];
-
+WNDPROC oldlinkProc = NULL;
 globaldata g;
-
-void CheckMyCheck(HWND hList)
-{
-	int nCount, i;
-	char str[256];
-
-	nCount = ListView_GetItemCount(hList);
-	for (i = 0; i < nCount; i++) {
-		if (ListView_GetItemState(hList, i, LVIS_SELECTED)) {
-			wsprintf(str, "%dにチェック", i);
-			MessageBox(hList, str, "CHECKED", MB_OK);
-		}
-	}
-	return;
-}
-
 
 void listup(HWND hList)
 {
@@ -86,16 +70,17 @@ int filelist(char *path)
 
 	hFind = FindFirstFile(path, &fd);
 	while (hFind != INVALID_HANDLE_VALUE) {
-		if (strcmp(fd.cFileName, ".") && strcmp(fd.cFileName, "..")) {
-			strcpy_s(d[i].fname, fd.cFileName);						// ファイル名
-			if (!(fd.dwFileAttributes&(FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_SYSTEM)))
+		if (!(fd.dwFileAttributes&(FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_SYSTEM))) {
+			if (fd.cFileName[0] != '.') {
+				strcpy_s(d[i].fname, fd.cFileName);						// ファイル名
 				d[i].fsize = (fd.nFileSizeHigh << 6) + ((fd.nFileSizeLow + 1023) >> 10);	// ファイルサイズ
-			//d[i].fsize = fd.nFileSizeHigh*MAXDWORD + fd.nFileSizeLow;
-			FileTimeToLocalFileTime(&(fd.ftLastWriteTime), &ft);
-			FileTimeToSystemTime(&ft, &st);
-			wsprintf(d[i].fdate, "%04d/%02d/%02d %02d:%02d",
-				st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);		// ファイル日付
-			i++;
+				//d[i].fsize = fd.nFileSizeHigh*MAXDWORD + fd.nFileSizeLow;
+				FileTimeToLocalFileTime(&(fd.ftLastWriteTime), &ft);
+				FileTimeToSystemTime(&ft, &st);
+				wsprintf(d[i].fdate, "%04d/%02d/%02d %02d:%02d",
+					st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);		// ファイル日付
+				i++;
+			}
 		}
 		if (!FindNextFile(hFind, &fd)) break;
 	}
@@ -181,6 +166,22 @@ HFONT SetMyFont(LPCTSTR face, int h, int angle)
 		PROOF_QUALITY,          //出力品質
 		FIXED_PITCH | FF_MODERN,        //ピッチとファミリー
 		face);                  //書体名
+	return hFont;
+}
+
+HFONT setFontSetting(HWND hWnd, int ctrlID, int height, int underline)
+{
+	LOGFONT logfont;
+	HFONT	hFont;
+
+	hFont = (HFONT)SendMessage(GetDlgItem(hWnd, ctrlID), WM_GETFONT, 0, 0);
+	GetObject(hFont, sizeof(logfont), &logfont);
+	logfont.lfHeight = height;
+	logfont.lfUnderline = underline;
+
+	hFont = CreateFontIndirect(&logfont);
+	SendDlgItemMessage(hWnd, ctrlID, WM_SETFONT, (WPARAM)hFont, 0);
+
 	return hFont;
 }
 
@@ -271,7 +272,7 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 
 					switch (col) {
 					case 0:
-						wsprintf(szString, "%d", row+1);    // 行番号
+						wsprintf(szString, "%02d", row+1);    // 行番号
 						break;
 					case 1:
 						wsprintf(szString, "%s", d[row].fname);    // 名前をセット
@@ -340,9 +341,11 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 
 	case WM_COMMAND:                        // Window のコマンド処理
 		switch (LOWORD(wp)) {
-		case IDOK:
+		case IDC_OK:
+			ShellExecute(hWnd, "open", "C:/",NULL,NULL,SW_SHOWDEFAULT);
 			return TRUE;
-		case IDCANCEL:
+		case IDC_CANCEL:
+			ShellExecute(hWnd, "open", "http://bluefish.orz.hm/", NULL, NULL, SW_SHOWDEFAULT);
 			return TRUE;
 
 		case IDC_GETFOLDER:
@@ -376,6 +379,32 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 	return FALSE;
 }
 
+LRESULT CALLBACK linkProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
+{
+	switch (msg){
+
+	case WM_SETCURSOR:		//マウスポインタの変更
+		SetCursor(g.hCur);
+		return 0;
+
+	case WM_PAINT:			// リンク文字列を青く書き直す
+		PAINTSTRUCT ps;
+		HDC         hdc;
+		char        line[256];
+
+		GetWindowText(hWnd, line, 255);
+		hdc = BeginPaint(hWnd, &ps);
+		SelectObject(hdc, g.hLinkfont);
+		SetTextColor(hdc, RGB(0, 0, 255));	// 文字を青くする
+		SetBkColor(hdc, GetSysColor(COLOR_BTNFACE));
+		SetBkMode(hdc, OPAQUE);
+		TextOut(hdc, 0, 0, line, lstrlen(line));
+		EndPaint(hWnd, &ps);
+		return 0;
+	}
+	return CallWindowProc(oldlinkProc, hWnd, msg, wp, lp);
+}
+
 // Aboutダイアログ表示
 LRESULT CALLBACK VersionProc(HWND hdlg, UINT msg, WPARAM wp, LPARAM lp)
 {
@@ -384,13 +413,27 @@ LRESULT CALLBACK VersionProc(HWND hdlg, UINT msg, WPARAM wp, LPARAM lp)
 	switch (msg) {
 	case WM_INITDIALOG:
 		g.hVersion = hdlg;
-		hFont = SetMyFont("ＭＳ ゴシック", 18, 0);
-		SendMessage(GetDlgItem(hdlg, IDC_PROCNAME), WM_SETFONT, (WPARAM)hFont, (LPARAM)FALSE);
-		hFont = SetMyFont("ＭＳ ゴシック", 12, 0);
-		SendMessage(GetDlgItem(hdlg, IDC_VERSION), WM_SETFONT, (WPARAM)hFont, (LPARAM)FALSE);
+		setFontSetting(hdlg, IDC_PROCNAME, 18, 0);
+		setFontSetting(hdlg, IDC_VERSION, 12, 0);
+		g.hCur = LoadCursor(g.hInst, MAKEINTRESOURCE(IDI_CURSOR1));
+		g.hLinkfont = setFontSetting(hdlg, IDC_LINKURL, 10, 1);
+		//URLリンク文字列のサブクラス化
+		oldlinkProc = (WNDPROC)GetWindowLong(GetDlgItem(hdlg, IDC_LINKURL), GWL_WNDPROC);
+		SetWindowLong(GetDlgItem(hdlg, IDC_LINKURL), GWL_WNDPROC, (LONG)linkProc);
 		return FALSE;
 	case WM_LBUTTONDOWN:
 		EndDialog(hdlg, IDOK);
+		break;
+	case WM_COMMAND:
+		switch (LOWORD(wp)) {
+		case IDC_LINKURL:
+			if (HIWORD(wp) == STN_CLICKED) {
+				char line[256];
+				GetDlgItemText(hdlg, LOWORD(wp), line, 255);
+				ShellExecute(hdlg, "open", line, NULL, NULL, SW_SHOWDEFAULT);
+			}
+			break;
+		}
 		break;
 	default:
 		return FALSE;
@@ -509,13 +552,14 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCm
 	if (!RegisterClassEx(&wcex)) return 0;
 
 	hWnd = CreateWindow(szTitle, szTitle, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
-		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, g.hInst, NULL);
+		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
 	if (!hWnd) {
 		return 0;
 	}
 
 	g.hInst = hInstance;
 	g.hMain = hWnd;
+
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);

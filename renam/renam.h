@@ -14,6 +14,9 @@ typedef struct  {
 	HDC			hBuffer;					// ダブルバッファ
 	HWND		hList;						// リストビュー
 
+	HCURSOR		hCur;
+	HFONT		hLinkfont;
+
 	long		count;
 	char		path[MAX_PATH];
 	char		dir[MAX_PATH];
