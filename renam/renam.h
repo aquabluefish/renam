@@ -13,6 +13,7 @@ typedef struct  {
 	HBITMAP		hBitmap;					// オフスクリーンビットマップ
 	HDC			hBuffer;					// ダブルバッファ
 	HWND		hList;						// リストビュー
+	long		file_n;
 
 	HCURSOR		hCur;
 	HFONT		hLinkfont;

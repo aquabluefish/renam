@@ -8,9 +8,6 @@
 #include "resource.h"
 #define WC_LISTVIEW "SysListView32"
 
-
-
-
 //
 // Menu resources
 //
@@ -43,7 +40,7 @@ IDR_MENU1 MENU
 // Dialog resources
 //
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-IDD_DIALOG1 DIALOG 0, 0, 423, 207
+IDD_DIALOG1 DIALOG 0, 0, 423, 211
 STYLE DS_3DLOOK | DS_CENTER | DS_SHELLFONT | WS_VISIBLE | WS_CHILDWINDOW | WS_SYSMENU
 FONT 8, "Ms Shell Dlg"
 {

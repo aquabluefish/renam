@@ -17,6 +17,47 @@ listdata d[256];
 WNDPROC oldlinkProc = NULL;
 globaldata g;
 
+void DebugMsgBox(LPCSTR pszFormat, ...)
+{
+	va_list	argp;
+	char pszBuf[256];
+	va_start(argp, pszFormat);
+	vsprintf_s(pszBuf, pszFormat, argp);
+	va_end(argp);
+	MessageBox(NULL, pszBuf, "debug info", MB_OK);
+}
+
+char *ptr_char(char *line, char schar)
+{
+	for (; *line; line++)
+	if (*line == schar)
+		return(line);
+	return(0);
+}
+
+char *ptr_char_last(char *line, char schar)
+{
+	char *i = 0L;
+	for (; *line; line++)
+	if (*line == schar)
+		i = line;
+	return(i);
+}
+
+char *ptr_string(char *lineBuf, char *wordBuf)
+{
+	char	*w, *x;
+
+	if (*wordBuf)
+	for (; *lineBuf; lineBuf++)
+	if (*lineBuf == *wordBuf)
+	for (x = lineBuf, w = wordBuf; *x == *w;) {
+		if (*++w == NULL) return(lineBuf);
+		if (*++x == NULL) break;
+	}
+	return(0);
+}
+
 void listup(HWND hList)
 {
 	int nCount, i;
@@ -88,6 +129,8 @@ int filelist(char *path)
 	}
 	FindClose(hFind);
 	ListView_SetItemCountEx(g.hList, i, LVSICF_NOINVALIDATEALL);
+	g.file_n = i;
+
 	return i;
 }
 
@@ -146,7 +189,8 @@ void GetFolder(HWND hdlg)
 	SHGetPathFromIDList(idlist, dst_file);		//ITEMIDLISTからパスを得る
 	CoTaskMemFree(idlist);				//ITEMIDLISTの解放
 	SetDlgItemText(hdlg, IDC_DESFILE, dst_file);	//フォルダ名出力
-	strcpy_s(g.dir, dst_file);
+	strcpy_s(g.path, dst_file);
+	strcpy_s(g.dir, g.path);
 	strcat_s(g.dir, "\\*.*");
 }
 
@@ -223,6 +267,10 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 	RECT rt;
 	static char szTmp[255] = { "C:\\*.*" };
 	LPNMLVCUSTOMDRAW lplvcd;
+	char from_name[MAX_PATH], to_name[MAX_PATH];
+	char fext[255];
+	char *p;
+	long retval;
 
 	switch (msg) {
 
@@ -343,11 +391,40 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 
 	case WM_COMMAND:                        // Window のコマンド処理
 		switch (LOWORD(wp)) {
+
 		case IDC_OK:
-			ShellExecute(hWnd, "open", "C:/",NULL,NULL,SW_SHOWDEFAULT);
+			for (row = 0; row < g.file_n; row++) {
+				if (p = ptr_char_last(d[row].fname, '.')) {
+					strcpy_s(fext, p);
+					strcpy_s(from_name, g.path);
+					strcat_s(from_name, "\\");
+					strcat_s(from_name, d[row].fname);
+					strcpy_s(to_name, from_name);
+					if (p = ptr_string(to_name, " - ")) {
+						*p = '\0';
+						strcat_s(to_name, fext);
+
+						LPVOID lpMsgBuf;
+						SetLastError(NO_ERROR);		//エラー情報クリア
+						retval = MoveFileEx(from_name, to_name, MOVEFILE_WRITE_THROUGH);
+						if (!retval) {
+							FormatMessage(				//エラー表示文字列作成
+								FORMAT_MESSAGE_ALLOCATE_BUFFER |
+								FORMAT_MESSAGE_FROM_SYSTEM |
+								FORMAT_MESSAGE_IGNORE_INSERTS,
+								NULL, GetLastError(),
+								MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+								(LPTSTR)&lpMsgBuf, 0, NULL);
+							DebugMsgBox("No.%02d : MoveFileEx Error : %s", row+1, lpMsgBuf);
+							LocalFree(lpMsgBuf);
+							break;
+						}
+					}
+				}
+			}
 			return TRUE;
+
 		case IDC_CANCEL:
-			ShellExecute(hWnd, "open", "http://bluefish.orz.hm/", NULL, NULL, SW_SHOWDEFAULT);
 			return TRUE;
 
 		case IDC_GETFOLDER:
