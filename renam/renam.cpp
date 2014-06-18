@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "renam.h"
 #include "trace.h"
 #include "resource.h"
@@ -30,8 +31,8 @@ void DebugMsgBox(LPCSTR pszFormat, ...)
 char *ptr_char(char *line, char schar)
 {
 	for (; *line; line++)
-	if (*line == schar)
-		return(line);
+		if (*line == schar)
+			return(line);
 	return(0);
 }
 
@@ -39,8 +40,8 @@ char *ptr_char_last(char *line, char schar)
 {
 	char *i = 0L;
 	for (; *line; line++)
-	if (*line == schar)
-		i = line;
+		if (*line == schar)
+			i = line;
 	return(i);
 }
 
@@ -49,13 +50,60 @@ char *ptr_string(char *lineBuf, char *wordBuf)
 	char	*w, *x;
 
 	if (*wordBuf)
-	for (; *lineBuf; lineBuf++)
-	if (*lineBuf == *wordBuf)
-	for (x = lineBuf, w = wordBuf; *x == *w;) {
-		if (*++w == NULL) return(lineBuf);
-		if (*++x == NULL) break;
-	}
+		for (; *lineBuf; lineBuf++)
+			if (*lineBuf == *wordBuf)
+				for (x = lineBuf, w = wordBuf; *x == *w;) {
+					if (*++w == NULL) return(lineBuf);
+					if (*++x == NULL) break;
+				}
 	return(0);
+}
+
+char *ptr_string_last(char *lineBuf, char *wordBuf)
+{
+	char	*w, *x;
+
+	char *i = 0L;
+	if (*wordBuf)
+		for (; *lineBuf; lineBuf++)
+			if (*lineBuf == *wordBuf)
+				for (x = lineBuf, w = wordBuf; *x == *w;) {
+					if (*++w == NULL) {
+						i = lineBuf;
+						break;
+					}
+					if (*++x == NULL) break;
+				}
+	return i;
+}
+
+char *charcat(char *line, char c)
+{
+
+	strncat(line, &c, 1)[strlen(line) + 1] = NULL;
+	return(line);
+}
+
+int tran_word(char *dline, char *sline, char *dword, char *sword)
+{
+	char	line0[1024];
+	char	*p;
+	int	n;
+
+	n = 0;
+	strcpy_s(line0, sline);
+	strcpy_s(dline,255,"");
+
+	for (p = line0; *p;)
+	if (!strncmp(p, sword, strlen(sword))) {
+		strcat(dline, dword);
+		p += strlen(sword);
+		n++;
+	}
+	else
+		charcat(dline, *p++);
+
+	return(n);
 }
 
 void listup(HWND hList)
@@ -400,8 +448,9 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 					strcat_s(from_name, "\\");
 					strcat_s(from_name, d[row].fname);
 					strcpy_s(to_name, from_name);
-					if (p = ptr_string(to_name, " - ")) {
+					if (p = ptr_string_last(to_name, " - ")) {
 						*p = '\0';
+						tran_word(to_name, to_name, "-", " - ");
 						strcat_s(to_name, fext);
 
 						LPVOID lpMsgBuf;
