@@ -9,7 +9,7 @@
 #pragma comment(lib, "Comctl32.lib")
 
 char ProgName[100] = "Renum";
-char Version[100] = "V.140617";
+char Version[100] = "V.140617	by K.I";
 
 static int sb_size[] = { 100, 200, -1 };
 DWORD dwStyleEx = 0;
@@ -263,7 +263,7 @@ HFONT SetMyFont(LPCTSTR face, int h, int angle)
 	return hFont;
 }
 
-HFONT setFontSetting(HWND hWnd, int ctrlID, int height, int underline)
+HFONT setFontSetting(HWND hWnd, int ctrlID, int height, int weight, int underline)
 {
 	LOGFONT logfont;
 	HFONT	hFont;
@@ -271,6 +271,7 @@ HFONT setFontSetting(HWND hWnd, int ctrlID, int height, int underline)
 	hFont = (HFONT)SendMessage(GetDlgItem(hWnd, ctrlID), WM_GETFONT, 0, 0);
 	GetObject(hFont, sizeof(logfont), &logfont);
 	logfont.lfHeight = height;
+	logfont.lfWeight = weight;
 	logfont.lfUnderline = underline;
 
 	hFont = CreateFontIndirect(&logfont);
@@ -555,8 +556,8 @@ LRESULT CALLBACK VersionProc(HWND hdlg, UINT msg, WPARAM wp, LPARAM lp)
 		g.hAbout = hdlg;
 		SetDlgItemText(hdlg, IDC_PROGNAME, ProgName);
 		SetDlgItemText(hdlg, IDC_VERSION, Version);
-		setFontSetting(hdlg, IDC_PROGNAME, 18, 0);
-		setFontSetting(hdlg, IDC_VERSION, 12, 0);
+		setFontSetting(hdlg, IDC_PROGNAME, 18, 1000, 0);
+		setFontSetting(hdlg, IDC_VERSION, 12, 0, 0);
 		//URLリンク文字列のサブクラス化
 		oldlinkProc = (WNDPROC)GetWindowLong(GetDlgItem(hdlg, IDC_LINKURL), GWL_WNDPROC);
 		SetWindowLong(GetDlgItem(hdlg, IDC_LINKURL), GWL_WNDPROC, (LONG)linkProc);
@@ -573,6 +574,8 @@ LRESULT CALLBACK VersionProc(HWND hdlg, UINT msg, WPARAM wp, LPARAM lp)
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
+	HICON hIcon;
+
 	switch (msg) {
 
 	case WM_CREATE:												//ウィンドウが開いたら
@@ -674,7 +677,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCm
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
 	wcex.hInstance = hInstance;
-	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(NULL));           // ICON
+	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE("IDI_ICON1"));           // ICON
 	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	wcex.lpszMenuName = MAKEINTRESOURCE(IDR_MENU1);                // MENU
@@ -690,7 +693,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCm
 
 	g.hInst = hInstance;
 	g.hMain = hWnd;
-
+	g.hIcon = wcex.hIcon;
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);

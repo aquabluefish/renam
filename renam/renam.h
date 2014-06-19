@@ -4,6 +4,7 @@ typedef struct  {
 	HWND		hMain;						// メインウィンドウのハンドル
 	HWND		hAbout;
 	HINSTANCE	hInst;						// メインウィンドウのインスタンス
+	HICON		hIcon;
 	HWND		hDlg0, hDlg1, hDlg2, hDlg3;	// 子ダイアログのハンドル
 	long		mainx, mainy;
 	long		deskx, desky;
