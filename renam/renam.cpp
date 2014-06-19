@@ -443,15 +443,17 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 		case IDC_OK:
 			for (row = 0; row < g.file_n; row++) {
 				if (p = ptr_char_last(d[row].fname, '.')) {
-					strcpy_s(fext, p);
-					strcpy_s(from_name, g.path);
+					strcpy_s(fext, p);								// Šg’£ŽqŽæ“¾
+					strcpy_s(from_name, g.path);					// path‚ðŒ‹‡
 					strcat_s(from_name, "\\");
 					strcat_s(from_name, d[row].fname);
 					strcpy_s(to_name, from_name);
-					if (p = ptr_string_last(to_name, " - ")) {
+					if (p = ptr_string_last(to_name, " - ")) {		// ÅŒã‚Ì" - "ˆÈ~‚ðíœ
+						if (ptr_string_last(to_name, " 75 - "))
+							p = ptr_string_last(to_name, " 75 - ");	// ÅŒã‚Ì" 75 - "ˆÈ~‚àíœ
 						*p = '\0';
-						tran_word(to_name, to_name, "-", " - ");
-						strcat_s(to_name, fext);
+						tran_word(to_name, to_name, " ", " - ");	// ‚»‚êˆÈŠO‚Ì" - "‚Í‹ó”’‚É•ÏŠ·
+						strcat_s(to_name, fext);					// Šg’£Žq‚ð–ß‚·
 
 						LPVOID lpMsgBuf;
 						SetLastError(NO_ERROR);		//ƒGƒ‰[î•ñƒNƒŠƒA
@@ -471,6 +473,8 @@ BOOL CALLBACK dlg0Proc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 					}
 				}
 			}
+			filelist(g.dir);
+			InvalidateRect(g.hList, NULL, TRUE);
 			return TRUE;
 
 		case IDC_CANCEL:
